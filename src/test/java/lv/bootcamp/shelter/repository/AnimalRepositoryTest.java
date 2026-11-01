@@ -7,8 +7,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Ticket: ANIMAL-3 (see README).
@@ -45,4 +47,27 @@ class AnimalRepositoryTest {
         animal.setStatus(status);
         return animal;
     }
+
+    @Test
+    void create_shouldBeRejectedWithSimilarMicrochipIdAndNotSaved() {
+        entityManager.persist(newAnimalWithMicrochipId("Rex", AnimalType.DOG, AnimalStatus.AVAILABLE, "123456"));
+        entityManager.flush();
+
+        Animal animalWithIdenticalMicrochipID = newAnimalWithMicrochipId("Buddy", AnimalType.DOG, AnimalStatus.AVAILABLE, "123456");
+
+        assertThatThrownBy(() -> {
+            animalRepository.save(animalWithIdenticalMicrochipID);
+            entityManager.flush();
+        }).isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    private Animal newAnimalWithMicrochipId(String name, AnimalType type, AnimalStatus status, String microchipId) {
+        Animal animal = new Animal();
+        animal.setName(name);
+        animal.setType(type);
+        animal.setStatus(status);
+        animal.setMicrochipId(microchipId);
+        return animal;
+    }
+
 }
